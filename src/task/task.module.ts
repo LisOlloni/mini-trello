@@ -5,10 +5,12 @@ import { TaskController } from './task.controller';
 import { TaskService } from './task.service';
 import { JwtAuthGuard } from 'src/auth/strategies/jwt-auth.guard';
 import { NotificationModule } from 'src/notification/notification.module';
+import { StorageModule } from 'src/attachments/storage.module';
 
 @Module({
   imports: [
     NotificationModule,
+    StorageModule,
     JwtModule.register({
       secret: process.env.AT_SECRET || 'defaultATSecret',
       signOptions: { expiresIn: '1h' },
@@ -16,5 +18,6 @@ import { NotificationModule } from 'src/notification/notification.module';
   ],
   controllers: [TaskController],
   providers: [TaskService, PrismaService, JwtAuthGuard],
+  exports: [TaskService],
 })
 export class TaskModule {}

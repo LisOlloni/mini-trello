@@ -19,4 +19,7 @@ export class TaskDto {
   @IsEnum(TaskStatus)
   @IsOptional()
   status: TaskStatus;
+
+  @IsNotEmpty()
+  file: Express.Multer.File;
 }

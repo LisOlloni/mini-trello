@@ -6,7 +6,6 @@ import { AuthModule } from './auth/auth.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TaskModule } from './task/task.module';
 import { NotificationModule } from './notification/notification.module';
-import { TaskService } from './task/task.service';
 
 @Module({
   imports: [
@@ -17,6 +16,6 @@ import { TaskService } from './task/task.service';
     NotificationModule,
   ],
   controllers: [AppController],
-  providers: [AppService, TaskService],
+  providers: [AppService],
 })
 export class AppModule {}

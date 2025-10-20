@@ -39,6 +39,15 @@ export class RolesGuard implements CanActivate {
       where: { userId, projectId },
     });
 
+    const globalUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { roles: true },
+    });
+
+    if (globalUser?.roles === 'ADMIN') {
+      return true;
+    }
+
     const userRole = membership?.role as UserRole | undefined;
     if (!userRole || !requiredRoles.includes(userRole)) {
       throw new ForbiddenException('Insufficient role');

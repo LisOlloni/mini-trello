@@ -38,19 +38,35 @@ export class JwtAuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException('Invalid token');
 
     try {
-      const payload: JwtPayload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.AT_SECRET || 'defaultATSecret',
-      });
+      type VerifiedPayload = Omit<JwtPayload, 'sub'> & {
+        sub?: string;
+        id?: string;
+      };
+      const verified = await this.jwtService.verifyAsync<VerifiedPayload>(
+        token,
+        {
+          secret: process.env.AT_SECRET || 'defaultATSecret',
+        },
+      );
 
       const session = await this.prisma.session.findUnique({
-        where: { id: payload.sessionId },
+        where: { id: verified.sessionId },
       });
 
       if (!session) throw new UnauthorizedException('Session invalid');
 
-      req.user = payload;
+      const normalized: JwtPayload = {
+        sub: verified.sub ?? (verified.id as string),
+        email: verified.email,
+        role: verified.role,
+        sessionId: verified.sessionId,
+        iat: verified.iat,
+        exp: verified.exp,
+      };
+
+      req.user = normalized;
       return true;
-    } catch (err) {
+    } catch {
       throw new UnauthorizedException('Token verification failed');
     }
   }

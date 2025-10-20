@@ -9,35 +9,40 @@ import { LoginDto } from './dto/login.dto';
 interface AuthRequest extends Request {
   user: {
     id: string;
+    sessionId?: string;
   };
 }
+
 @ApiTags('auth')
-@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
   async signup(@Body() dto: SignupDto) {
-    return await this.authService.signup(dto);
+    return this.authService.signup(dto);
   }
+
   @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.authService.signin(dto.email, dto.password);
   }
+
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   async logout(@Req() req: { user: { sessionId: string } }) {
     return this.authService.logout(req.user.sessionId);
   }
-  @Patch()
-  async ChangePassword(
+
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async changePassword(
     @Req() req: AuthRequest,
     @Body() dto: ChangePasswordDto,
   ) {
     const userId = req.user.id;
-
-    return await this.authService.ChangePassword(userId, dto);
+    return this.authService.ChangePassword(userId, dto);
   }
 }

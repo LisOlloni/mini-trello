@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import {
   OnGatewayConnection,
   WebSocketGateway,
@@ -10,7 +9,7 @@ import { Server, Socket } from 'socket.io';
 export class NotificationGateway implements OnGatewayConnection {
   @WebSocketServer() server: Server;
 
-  handleConnection(client: Socket) {
+  async handleConnection(client: Socket): Promise<void> {
     const auth = client.handshake?.auth as Record<string, unknown> | undefined;
     const query = client.handshake?.query as
       | Record<string, unknown>
@@ -23,7 +22,7 @@ export class NotificationGateway implements OnGatewayConnection {
     const userId = authUserId ?? queryUserId;
 
     if (userId && userId.length > 0) {
-      client.join(`user:${userId}`);
+      await client.join(`user:${userId}`);
     }
   }
 

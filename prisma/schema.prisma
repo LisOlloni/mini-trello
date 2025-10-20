@@ -9,25 +9,23 @@ datasource db {
 }
 
 model User {
-  id String @id @default(uuid())
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  roles     UserRole @default(ADMIN)
+  name      String
+  createdAt DateTime @default(now())
 
-  email String @unique
-
-  project ProjectMembership[]
-
-  password String
-  roles    UserRole @default(USER)
-  name     String
-
-  projects Project[] @relation("UserProjects")
-
-  notifications Notification[]
-
-  createdAt DateTime  @default(now())
-  Session   Session[]
-  Task      Task[]
-
-  AuditLog AuditLog[]
+  project           ProjectMembership[]
+  projects          Project[]           @relation("UserProjects")
+  notifications     Notification[]
+  Session           Session[]
+  Task              Task[]
+  AuditLog          AuditLog[]
+  attachments       Attachment[]        @relation("UserAttachments")
+  fileVersions      FileVersion[]       @relation("UserFileVersions")
+  ProjectInvitation ProjectInvitation[]
+  ActivityLong      ActivityLong[]
 }
 
 model AuditLog {
@@ -39,56 +37,96 @@ model AuditLog {
   oldData    Json?
   newData    Json?
   createdAt  DateTime    @default(now())
-  User       User        @relation(fields: [userId], references: [id])
+
+  User User @relation(fields: [userId], references: [id])
 }
 
 model Project {
-  id String @id @default(uuid())
-
-  name String
-
-  members ProjectMembership[]
-
-  owner User @relation("UserProjects", fields: [ownerId], references: [id])
-
-  ownerId String
-
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String
   createdAt DateTime @default(now())
-  Task      Task[]
+
+  members           ProjectMembership[]
+  owner             User                @relation("UserProjects", fields: [ownerId], references: [id])
+  Task              Task[]
+  attachments       Attachment[]
+  ProjectInvitation ProjectInvitation[]
+  ActivityLong      ActivityLong[]
 }
 
 model Session {
   id        String   @id @default(uuid())
-  token     String   @unique
-  user      User     @relation(fields: [userId], references: [id])
+  token     String
   userId    String
   createdAt DateTime @default(now())
   expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Task {
-  id            String         @id @default(uuid())
-  title         String
-  description   String?
-  status        TaskStatus     @default(TODO)
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  projectId   String
+  assigneeID  String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
   project       Project        @relation(fields: [projectId], references: [id])
-  projectId     String
-  attachment    String?
   assignee      User?          @relation(fields: [assigneeID], references: [id])
-  assigneeID    String?
   notifications Notification[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  attachments   Attachment[]
 }
 
 model ProjectMembership {
   id        String   @id @default(uuid())
-  user      User     @relation(fields: [userId], references: [id])
   userId    String
-  project   Project  @relation(fields: [projectId], references: [id])
   projectId String
   role      UserRole
   createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+}
+
+model Attachment {
+  id               String   @id @default(uuid())
+  filename         String
+  mime             String
+  size             Int
+  taskId           String?
+  projectId        String?
+  createdById      String
+  currentVersionId String?  @unique
+  createdAt        DateTime @default(now())
+
+  task      Task?    @relation(fields: [taskId], references: [id])
+  project   Project? @relation(fields: [projectId], references: [id])
+  createdBy User     @relation("UserAttachments", fields: [createdById], references: [id])
+
+  currentVersion FileVersion? @relation("CurrentFileVersion", fields: [currentVersionId], references: [id])
+
+  versions FileVersion[] @relation("AllFileVersions")
+}
+
+model FileVersion {
+  id           String      @id @default(uuid())
+  attachmentId String
+  storage      StorageType
+  storageKey   String
+  filename     String
+  mime         String
+  size         Int
+  createdById  String
+  createdAt    DateTime    @default(now())
+
+  attachment Attachment @relation("AllFileVersions", fields: [attachmentId], references: [id])
+  createdBy  User       @relation("UserFileVersions", fields: [createdById], references: [id])
+
+  currentOf Attachment? @relation("CurrentFileVersion")
 }
 
 model Notification {
@@ -102,6 +140,30 @@ model Notification {
 
   user User  @relation(fields: [userId], references: [id])
   task Task? @relation(fields: [taskId], references: [id])
+}
+
+model ProjectInvitation {
+  id          String           @id @default(uuid())
+  projectId   String
+  status      InvitationStatus @default(PENDING)
+  invitedById String
+  email       String
+
+  project   Project @relation(fields: [projectId], references: [id])
+  invitedBy User    @relation(fields: [invitedById], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model ActivityLong {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  activityLong    String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
 }
 
 enum TaskStatus {
@@ -125,4 +187,16 @@ enum UserRole {
   USER
   ADMIN
   MANAGER
+}
+
+enum StorageType {
+  LOCAL
+  GOOGLE_DRIVE
+  S3
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }

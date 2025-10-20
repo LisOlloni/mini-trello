@@ -53,7 +53,7 @@ export class AuthService {
     });
 
     const payload = {
-      sub: user.id,
+      id: user.id,
       name: user.name,
       email: user.email,
       sessionId: session.id,
@@ -126,7 +126,7 @@ export class AuthService {
     });
 
     const payload = {
-      sub: user.id,
+      id: user.id,
       email: user.email,
       sessionId: session.id,
     };
@@ -162,33 +162,37 @@ export class AuthService {
   }
 
   async ChangePassword(userId: string, dto: ChangePasswordDto) {
-    const getUser = await this.prismaService.user.findUnique({
-      where: { id: userId },
-    });
+    try {
+      const getUser = await this.prismaService.user.findUnique({
+        where: { id: userId },
+      });
 
-    if (!getUser) throw new ForbiddenException('User not found !');
+      if (!getUser) throw new ForbiddenException('User not found!');
 
-    const sessions = await this.prismaService.session.findMany({
-      where: { userId: getUser.id },
-    });
+      const match = await bcrypt.compare(dto.oldPassword, getUser.password);
+      if (!match) throw new ForbiddenException('Old password is incorrect!');
 
-    for (const session of sessions) {
-      const match = await bcrypt.compare(dto.oldPassword, session.token);
+      const hashNewPassword = await bcrypt.hash(dto.newPassword, 10);
 
-      if (!match) throw new ForbiddenException('Password is incorrect!');
+      await this.prismaService.user.update({
+        where: { id: getUser.id },
+        data: { password: hashNewPassword },
+      });
+
+      await this.prismaService.session.updateMany({
+        where: { userId: getUser.id },
+
+        data: {
+          token: hashNewPassword, // ose hash-i i password-it të ri
+        },
+      });
+
+      return {
+        message: 'Password changed successfully. All sessions revoked.',
+      };
+    } catch (error) {
+      console.error('ChangePassword error:', error);
+      throw error; // për debug, mund ta mbaj si është ose kthe një HttpException
     }
-
-    const hashNewPassword = await bcrypt.hash(dto.newPassword, 10);
-
-    await this.prismaService.user.update({
-      where: { id: getUser.id },
-
-      data: { password: hashNewPassword },
-    });
-    await this.prismaService.session.deleteMany({
-      where: { userId: getUser.id },
-    });
-
-    return { message: 'Password changed successfully. All sessions revoked.' };
   }
 }
