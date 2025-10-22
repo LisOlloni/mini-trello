@@ -10,6 +10,7 @@ import {
   Put,
   UseInterceptors,
   UploadedFile,
+  Query,
 } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { TaskDto } from './dto/task.dto';
@@ -21,9 +22,11 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { TaskFilter } from './dto/task-filter.dto';
 
 @ApiTags('tasks')
 @ApiBearerAuth()
@@ -92,5 +95,16 @@ export class TaskController {
   ) {
     const userId = req.user.sub;
     return await this.taskService.uploadTasks(userId, projectId, taskId, file);
+  }
+
+  @Get('filter')
+  @ApiQuery({ name: 'assigneeID', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'priority', required: false })
+  @ApiQuery({ name: 'dueDate', required: false })
+  @ApiQuery({ name: 'search', required: false })
+  filterTasks(@Query() filter: TaskFilter, @Req() req: JwtRequest) {
+    const userId = req.user.sub;
+    return this.taskService.filterTask(userId, filter);
   }
 }

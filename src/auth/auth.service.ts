@@ -100,7 +100,6 @@ export class AuthService {
 
     if (!user) throw new ForbiddenException('User not found');
 
-    // Check if user has any valid session tokens
     const userSessions = await this.prismaService.session.findMany({
       where: { userId: user.id },
     });
@@ -183,7 +182,7 @@ export class AuthService {
         where: { userId: getUser.id },
 
         data: {
-          token: hashNewPassword, // ose hash-i i password-it të ri
+          token: hashNewPassword,
         },
       });
 
@@ -192,7 +191,7 @@ export class AuthService {
       };
     } catch (error) {
       console.error('ChangePassword error:', error);
-      throw error; // për debug, mund ta mbaj si është ose kthe një HttpException
+      throw error;
     }
   }
 }

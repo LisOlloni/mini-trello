@@ -3,16 +3,30 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ProjectDto } from './dto/projects.dto';
 import { UserRole } from 'generated/prisma';
 import { InviteUserDto } from './dto/invite-user.dto';
+import { PaymentService } from 'src/paymant/paymant.service';
 
 @Injectable()
 export class ProjectService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private paymentService: PaymentService,
+  ) {}
 
   async createProject(
     userId: string,
     dto: ProjectDto,
     members?: { userId: string; role: UserRole }[],
   ) {
+    const userProjectsCount = await this.prisma.project.count({
+      where: { ownerId: userId },
+    });
+
+    const itsPremium = await this.paymentService.checkLimits(userId);
+
+    if (userProjectsCount >= 5 && !itsPremium) {
+      throw new ForbiddenException('Not allowed');
+    }
+
     const project = await this.prisma.project.create({
       data: {
         name: dto.name,
@@ -116,7 +130,7 @@ export class ProjectService {
       data: {
         projectId,
         userId: inviterId,
-        action: `Invited ${dto.email} to project`,
+        activityLong: `Invited ${dto.email} to project`,
       },
     });
 

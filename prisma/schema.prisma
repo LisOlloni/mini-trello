@@ -16,16 +16,18 @@ model User {
   name      String
   createdAt DateTime @default(now())
 
-  project           ProjectMembership[]
-  projects          Project[]           @relation("UserProjects")
-  notifications     Notification[]
-  Session           Session[]
-  Task              Task[]
-  AuditLog          AuditLog[]
-  attachments       Attachment[]        @relation("UserAttachments")
-  fileVersions      FileVersion[]       @relation("UserFileVersions")
-  ProjectInvitation ProjectInvitation[]
-  ActivityLong      ActivityLong[]
+  subscription       Subscription[]
+  project            ProjectMembership[]
+  projects           Project[]           @relation("UserProjects")
+  notifications      Notification[]
+  Session            Session[]
+  Task               Task[]
+  AuditLog           AuditLog[]
+  attachments        Attachment[]        @relation("UserAttachments")
+  fileVersions       FileVersion[]       @relation("UserFileVersions")
+  ProjectInvitation  ProjectInvitation[]
+  ActivityLong       ActivityLong[]
+  paymentTransaction paymentTransaction?
 }
 
 model AuditLog {
@@ -74,6 +76,8 @@ model Task {
   assigneeID  String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+
+  priority TaskPriority @default(MEDIUM)
 
   project       Project        @relation(fields: [projectId], references: [id])
   assignee      User?          @relation(fields: [assigneeID], references: [id])
@@ -156,14 +160,41 @@ model ProjectInvitation {
 }
 
 model ActivityLong {
-  id        String   @id @default(uuid())
-  projectId String
-  userId    String
-  activityLong    String
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  projectId    String
+  userId       String
+  activityLong String?
+  createdAt    DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id])
   user    User    @relation(fields: [userId], references: [id])
+}
+
+model Subscription {
+  id         String   @id @default(uuid())
+  userId     String
+  amount     Float
+  currency   String
+  status     String
+  providerId String   @unique
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model paymentTransaction {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  plan      PlanType @default(FREE)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+enum PlanType {
+  FREE
+  PREMIUM
 }
 
 enum TaskStatus {
@@ -199,4 +230,10 @@ enum InvitationStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
 }

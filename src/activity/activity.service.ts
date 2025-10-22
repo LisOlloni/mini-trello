@@ -5,12 +5,12 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class ActivityService {
   constructor(private prisma: PrismaService) {}
 
-  async logActivity(projectId: string, userId: string, action: string) {
+  async logActivity(projectId: string, userId: string, activityLong: string) {
     await this.prisma.activityLong.create({
       data: {
         projectId,
         userId,
-        action,
+        activityLong,
       },
     });
   }

@@ -4,6 +4,9 @@ import { TaskDto } from './dto/task.dto';
 import { CreateTaskDto } from './dto/createTask.dto';
 import { NotificationService } from 'src/notification/notification.service';
 import { StorageService } from 'src/attachments/storage.service';
+import { PaymentService } from 'src/paymant/paymant.service';
+import { TaskFilter } from './dto/task-filter.dto';
+import { Prisma } from 'generated/prisma';
 
 // interface Membership {
 //   userId: string;
@@ -16,6 +19,7 @@ export class TaskService {
     private prisma: PrismaService,
     private notificationService: NotificationService,
     private storageService: StorageService,
+    private paymentService: PaymentService,
   ) {}
 
   async createTask(userId: string, projectId: string, dto: CreateTaskDto) {
@@ -28,9 +32,17 @@ export class TaskService {
 
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      include: { members: true },
+      include: { members: true, Task: true },
     });
     if (!project) throw new ForbiddenException('Project not available');
+
+    const isPremium = await this.paymentService.checkLimits(userId);
+
+    if (!isPremium && project.Task.length >= 8) {
+      throw new ForbiddenException(
+        'Free limit reached: Upgrade to premium to create more tasks per project',
+      );
+    }
 
     const membership = project.members.find((m) => m.userId === userId);
     if (
@@ -71,7 +83,6 @@ export class TaskService {
       },
     });
 
-    // 6️⃣ Krijo audit log
     await this.prisma.auditLog.create({
       data: {
         action: 'CREATE',
@@ -86,12 +97,11 @@ export class TaskService {
       },
     });
 
-    // 7️⃣ Krijo activity log
     await this.prisma.activityLong.create({
       data: {
         projectId,
         userId,
-        action: `Created task "${task.title}" (${task.id}) assigned to "${assigneeID}"`,
+        activityLong: `Created task "${task.title}" (${task.id}) assigned to "${assigneeID}"`,
       },
     });
 
@@ -136,7 +146,7 @@ export class TaskService {
       data: {
         projectId: project.id,
         userId,
-        action: `Updated task "${updatedTask.title}" (${taskId})`,
+        activityLong: `Updated task "${updatedTask.title}" (${taskId})`,
       },
     });
 
@@ -204,7 +214,7 @@ export class TaskService {
       data: {
         projectId: project.id,
         userId,
-        action: `Deleted task "${task.title}" (${taskId})`,
+        activityLong: `Deleted task "${task.title}" (${taskId})`,
       },
     });
 
@@ -266,10 +276,39 @@ export class TaskService {
       data: {
         projectId: project.id,
         userId,
-        action: `Uploaded file "${file.originalname}" to task "${task.title}" (${taskId})`,
+        activityLong: `Uploaded file "${file.originalname}" to task "${task.title}" (${taskId})`,
       },
     });
 
     return { attachment, storedFile: storedFile.storageKey };
+  }
+
+  async filterTask(userId: string, filter: TaskFilter) {
+    const { assigneeID, status, priority, createdAt, search } = filter;
+
+    const where: Prisma.TaskWhereInput = {
+      project: {
+        members: {
+          some: { userId },
+        },
+      },
+    };
+
+    if (assigneeID) where.assigneeID = assigneeID;
+    if (status) where.status = status;
+    if (priority) where.priority = priority;
+    if (createdAt) where.createdAt = createdAt;
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    return await this.prisma.task.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

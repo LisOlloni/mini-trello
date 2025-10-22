@@ -6,6 +6,7 @@ import { TaskService } from './task.service';
 import { JwtAuthGuard } from 'src/auth/strategies/jwt-auth.guard';
 import { NotificationModule } from 'src/notification/notification.module';
 import { StorageModule } from 'src/attachments/storage.module';
+import { PaymentService } from 'src/paymant/paymant.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { StorageModule } from 'src/attachments/storage.module';
     }),
   ],
   controllers: [TaskController],
-  providers: [TaskService, PrismaService, JwtAuthGuard],
+  providers: [TaskService, PrismaService, JwtAuthGuard, PaymentService],
   exports: [TaskService],
 })
 export class TaskModule {}
